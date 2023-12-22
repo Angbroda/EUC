@@ -1,0 +1,82 @@
+[PDF]
+VERSION=2.0
+
+[PACKAGE DEFINITION]
+LANGUAGE=Multilanguage
+VERSION=1
+PUBLISHER=Arcelormittal
+NAME=S0001M00 - Template
+MIFFileName=S0001M00.MIF
+COMMENT=Template
+PROGRAMS=Installation, Desinstallation
+
+[Installation]
+ADMINRIGHTSREQUIRED=True
+USERINPUTREQUIRED=False
+COMMANDLINE=POWERSHELL.EXE SCCM-S0001M00.ps1
+NAME=Installation
+COMMENT=
+CANRUNWHEN=AnyUserStatus
+RUN=Hidden
+Afterrunning=
+AUTHORIZED_DYNAMIC_INSTALL=YES
+SupportedClients=Win NT (I386),Win NT (IA64),Win NT (x64)
+Win NT (I386) MinVersion1=5.00.2195.4
+Win NT (I386) MaxVersion1=5.00.2195.4
+Win NT (I386) MinVersion2=5.10.2600.2
+Win NT (I386) MaxVersion2=5.10.2600.2
+Win NT (I386) MinVersion3=5.20.0000.0
+Win NT (I386) MaxVersion3=5.20.9999.9999
+Win NT (I386) MinVersion4=5.20.3790.0
+Win NT (I386) MaxVersion4=5.20.3790.2
+Win NT (I386) MinVersion5=6.00.0000.0
+Win NT (I386) MaxVersion5=6.00.9999.9999
+Win NT (I386) MinVersion6=6.10.0000.0
+Win NT (I386) MinVersion6=6.10.9999.9999
+Win NT (IA64) MinVersion1=5.20.0000.0
+Win NT (IA64) MaxVersion1=5.20.9999.9999
+Win NT (x64) MinVersion1=5.20.0000.0
+Win NT (x64) MaxVersion1=5.20.9999.9999
+Win NT (x64) MinVersion2=5.20.3790.0
+Win NT (x64) MaxVersion2=5.20.9999.9999
+Win NT (x64) MinVersion3=5.20.3790.0
+Win NT (x64) MaxVersion3=5.20.3790.2
+Win NT (x64) MinVersion4=6.00.0000.0
+Win NT (x64) MaxVersion4=6.00.9999.9999 
+Win NT (x64) MinVersion5=6.10.0000.0
+Win NT (x64) MaxVersion5=6.10.9999.9999
+
+[Desinstallation]
+ADMINRIGHTSREQUIRED=True
+USERINPUTREQUIRED=False
+COMMANDLINE=POWERSHELL.EXE SCCM-S0001M00.ps1 -appArgs "remove"
+NAME=Desinstallation
+COMMENT=
+CANRUNWHEN=AnyUserStatus
+RUN=Hidden
+Afterrunning=
+SupportedClients=Win NT (I386),Win NT (IA64),Win NT (x64)
+Win NT (I386) MinVersion1=5.00.2195.4
+Win NT (I386) MaxVersion1=5.00.2195.4
+Win NT (I386) MinVersion2=5.10.2600.2
+Win NT (I386) MaxVersion2=5.10.2600.2
+Win NT (I386) MinVersion3=5.20.0000.0
+Win NT (I386) MaxVersion3=5.20.9999.9999
+Win NT (I386) MinVersion4=5.20.3790.0
+Win NT (I386) MaxVersion4=5.20.3790.2
+Win NT (I386) MinVersion5=6.00.0000.0
+Win NT (I386) MaxVersion5=6.00.9999.9999
+Win NT (I386) MinVersion6=6.10.0000.0
+Win NT (I386) MinVersion6=6.10.9999.9999
+Win NT (IA64) MinVersion1=5.20.0000.0
+Win NT (IA64) MaxVersion1=5.20.9999.9999
+Win NT (x64) MinVersion1=5.20.0000.0
+Win NT (x64) MaxVersion1=5.20.9999.9999
+Win NT (x64) MinVersion2=5.20.3790.0
+Win NT (x64) MaxVersion2=5.20.9999.9999
+Win NT (x64) MinVersion3=5.20.3790.0
+Win NT (x64) MaxVersion3=5.20.3790.2
+Win NT (x64) MinVersion4=6.00.0000.0
+Win NT (x64) MaxVersion4=6.00.9999.9999 
+Win NT (x64) MinVersion5=6.10.0000.0
+Win NT (x64) MaxVersion5=6.10.9999.9999
