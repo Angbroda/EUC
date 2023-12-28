@@ -7,9 +7,9 @@ param (
 )
 
 ############################################### VALUES TO CHANGE ##############################################################
-$installationArgs = "/S /v/qn"
-$uninstallArgs = "/verysilent /norestart /suppressmsgboxes"
-$internalName = "eDrawings"
+$installationArgs = "/q"
+$uninstallArgs = "{CD444C9C-EFD2-4CB8-9480-1BC009C98C9F}"
+$internalName = "TestP"
 $activeSetup = 0
 ###############################################################################################################################
 
@@ -53,17 +53,20 @@ function MainLoop() {
 }
 
 function Uninstall {
+    # Gets the application code and the install path
+    $applicationCode, $installPath = Initialize-Vars
+
     # Initialize C:\IT\LOGS\{PACKAGE} and returns the path to the folder
     $logPath = Initialize-Loggin -ApplicationCode $applicationCode
 
     # Starts the logging
-    Start-Transcript -Path ($logPath + "\" + $applicationCode + "-Uninstall.log") -Append
+    Start-Transcript -Path ($logPath + "\" + $applicationCode + ".log") -Append
 
-    # Get the path to the folder, name of the installer, extension and version based on the LOCAL install path (MSI or EXE)
-    $applicationName, $applicationExtension, $applicationVersion = Get-Details -localPath $installPath
-
+    # Gets the name of the installer, extension and version based on the LOCAL install path (MSI or EXE)
+    $applicationToRun, $applicationVersion = Get-Details -localPath $installPath
+	
     # Start standard uninstall
-    $code = Install-Package -installPath $installPath -name $applicationToRun -installArgs $uninstallArgs -uninstall 1 -logPath $logPath  
+    $code = Install-Package -installPath $installPath -name $applicationToRun -installArgs $uninstallArgs -uninstall 1 -logPath $logPath
     Write-Host "$(Get-Date) Uninstall code: $code"
 
     # Write here your own code! Defaults to 0
@@ -223,15 +226,15 @@ function Add-Registry-Record() {
     # Gets the date
     $date = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
 
-    # Write to the 64 bits registry
-    Write-Host "$(Get-Date) Writing 64 bits register"
+    # Write to the 32 bits registry
+    Write-Host "$(Get-Date) Writing 32 bits register"
     Write-Host $(if ($null -ne (New-Item -Path HKLM:\SOFTWARE\IT\INVENTORY -Name $applicationCode -ErrorAction SilentlyContinue)) { "Registry key created successfully" } else { "Failed to create the registry key" })
 
     # Write properties
     $result = & { $test = New-ItemProperty -path HKLM:\SOFTWARE\IT\INVENTORY\$applicationCode -propertyType String -Name InstallDate -value $date -ErrorAction SilentlyContinue; if ($null -ne $test) { 0 } else { 1 } }
     $result += & { $test = New-ItemProperty -path HKLM:\SOFTWARE\IT\INVENTORY\$applicationCode -propertyType String -Name ProductName -value $applicationName -ErrorAction SilentlyContinue; if ($null -ne $test) { 0 } else { 1 } }
     $result += & { $test = New-ItemProperty -path HKLM:\SOFTWARE\IT\INVENTORY\$applicationCode -propertyType String -Name ProductVersion -value $applicationVersion -ErrorAction SilentlyContinue; if ($null -ne $test) { 0 } else { 1 } }
-    Write-Host $(if ($result -eq 0) { "Registry properties applied" } else { "Error applying properties" })
+    Write-Host $(if ($result -eq 0) { "$(Get-Date) Registry properties applied" } else { "$(Get-Date) Error applying properties" })
 
     # Write to the 32 bits registry
     Write-Host "$(Get-Date) Writing 32 bits register"
@@ -249,7 +252,7 @@ function Initialize-Vars() {
     # It returns the application code from the file name and the install path
 
     # Gets the application code
-    $applicationCode = $MyInvocation.MyCommand.Name.Substring(5, $MyInvocation.MyCommand.Name.LastIndexOf('.') - 5)
+    $applicationCode = (Get-Item $MyInvocation.PSCommandPath).Name.Substring(5, (Get-Item $MyInvocation.PSCommandPath).Name.LastIndexOf('.') - 5)
     
     # Gets the install path
     $installPath = ".\$(Get-ChildItem -Path './' -Directory)"
@@ -280,56 +283,54 @@ function Get-Details() {
     param (
         [string]$localPath
     )
-    function Get-Details() {
-        param (
-            [string]$localPath
-        )
-        # Get the absolute path
-        $absolutePath = Resolve-Path -Path $localPath
-        Write-Host "$(Get-Date) Absolute path to the sources folder: $absolutePath"
-        
-        # Get the contents of the path
-        $localPathContents = Get-ChildItem $absolutePath
-        
-        # Checks path contents and checks if the folder has an .exe or .msi file
-        $appPath = $localPathContents | Where-Object { $_.Extension -eq ".exe" -or $_.Extension -eq ".msi" } | Select-Object -First 1
-        
-        # Checks if the folder has an .exe or .msi file
-        if ($appPath) {
-            if ($appPath.Extension -eq ".msi") {
-                $windowsInstaller = New-Object -com WindowsInstaller.Installer
-                $database = $windowsInstaller.GetType().InvokeMember(
-                    "OpenDatabase", "InvokeMethod", $Null,
-                    $windowsInstaller, @($appPath.FullName, 0)
-                )
-     
-                $q = "SELECT Value FROM Property WHERE Property = 'ProductVersion'"
-                $View = $database.GetType().InvokeMember(
-                    "OpenView", "InvokeMethod", $Null, $database, ($q)
-                )
-                
-                # Get the details from the MSI
-                $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
-                $record = ($View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null ))
-                # Get the version
-                $version = $record.GetType().InvokeMember( "StringData", "GetProperty", $Null, $record, 1 )
-                
-                # Close the objects and records
-                [System.Runtime.InteropServices.Marshal]::ReleaseComObject($database)
-                [System.Runtime.InteropServices.Marshal]::ReleaseComObject($View)
-                [System.Runtime.InteropServices.Marshal]::ReleaseComObject($windowsInstaller)
+    # Get the absolute path
+    $absolutePath = Resolve-Path -Path $localPath
+    Write-Host "$(Get-Date) Absolute path to the sources folder: $absolutePath"
     
-                return $appPath.Name, $version
-            }
+    # Get the contents of the path
+    $localPathContents = Get-ChildItem $absolutePath
     
-            # Get the version from the EXE
-            $versionInfo = (Get-Item (Join-Path -Path $absolutePath -ChildPath $appPath)).VersionInfo.FileVersionRaw
-            return $appPath.Name, $versionInfo.ToString()
+    # Checks path contents and checks if the folder has an .exe or .msi file
+    $appPath = $localPathContents | Where-Object { $_.Extension -eq ".exe" -or $_.Extension -eq ".msi" } | Select-Object -First 1
+    
+    # Checks if the folder has an .exe or .msi file
+    if ($appPath) {
+        if ($appPath.Extension -eq ".msi") {
+            $windowsInstaller = New-Object -com WindowsInstaller.Installer
+            $database = $windowsInstaller.GetType().InvokeMember(
+                "OpenDatabase", "InvokeMethod", $Null,
+                $windowsInstaller, @($appPath.FullName, 0)
+            )
+    
+            $q = "SELECT Value FROM Property WHERE Property = 'ProductVersion'"
+            $View = $database.GetType().InvokeMember(
+                "OpenView", "InvokeMethod", $Null, $database, ($q)
+            )
+            
+            # Get the details from the MSI
+            $handle = $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
+            $record = ($View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null ))
+            # Get the version
+            $version = $record.GetType().InvokeMember( "StringData", "GetProperty", $Null, $record, 1 )
+            
+            # Close the objects and records
+            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($database)
+            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($View)
+            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($windowsInstaller)
+
+            #TODO: HACKY BIT
+            $handle = $handle
+
+            return $appPath.Name, $version
         }
-        
-        # If the folder does not have an .exe or .msi file, it returns an empty string
-        return "", ""
+
+        # Get the version from the EXE
+        $versionInfo = (Get-Item (Join-Path -Path $absolutePath -ChildPath $appPath)).VersionInfo.FileVersionRaw
+        return $appPath.Name, $versionInfo.ToString()
     }
+    
+    # If the folder does not have an .exe or .msi file, it returns an empty string
+    return "", ""
 }
 
 function Initialize-Loggin {
@@ -348,6 +349,7 @@ function Initialize-Loggin {
     $logPathReturn = "C:\IT\LOGS\" + $logCode
     return $logPathReturn
 }
+
 function Install-Package() {
     # This funtion installs the package based on the installer type (MSI or EXE)
     # It returns 0 if the installation was successful, 1 if it failed and -1 if the installer type is none
@@ -358,7 +360,7 @@ function Install-Package() {
         [string]$logPath,
         [int]$uninstall = 0
     )
-    $returnCode = -1
+
     # Gets the extension of the installer
     $extension = $name.Substring($name.LastIndexOf('.')).ToLower()
     # Gets the absolute path of the installer
@@ -370,24 +372,25 @@ function Install-Package() {
     # Executable process
     if ($extension -eq ".exe") {
         # Logging install arguments
+        $installArgs = "$installArgs"
         Write-Host "$(Get-Date) Processing $absolutePath EXE using $installArgs"
-        $returnCode = Start-Process -FilePath $absolutePath -ArgumentList $installArgs -PassThru -Wait
+        $process = Start-Process -FilePath $absolutePath -ArgumentList $installArgs -PassThru -Wait
     }
 
     if ($extension -eq ".msi" -and $uninstall -eq 0) {
         # Logging install arguments
         $installArgs = "/i $absolutePath $installArgs /L*V $logPath\$name-msi.log"
         Write-Host "$(Get-Date) Processing MSI $absolutePath using $installArgs"
-        $returnCode = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
+        $process = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
     }
 
     if ($extension -eq ".msi" -and $uninstall -eq 1) {
         $installArgs = "/x$installArgs /QN /L*V $logPath\$name-msi.log"
         Write-Host "$(Get-Date) Uninstalling MSI $absolutePath using $installArgs"
-        $returnCode = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
+        $process = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
     }
-    
-    return $returnCode
+
+    return $process.ExitCode
 }
 
 function Exit-Gracefully() {
