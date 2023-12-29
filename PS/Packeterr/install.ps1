@@ -393,6 +393,10 @@ function Install-Package() {
     return $process.ExitCode
 }
 
+function Get-MSIData() {
+
+}
+
 function Exit-Gracefully() {
     param (
         $optionalParameters
