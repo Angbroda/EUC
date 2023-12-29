@@ -8,7 +8,7 @@ param (
 
 ############################################### VALUES TO CHANGE ##############################################################
 $installationArgs = "/q"
-$uninstallArgs = "{CD444C9C-EFD2-4CB8-9480-1BC009C98C9F}"
+$uninstallArgs = ""
 $internalName = "TestP"
 $activeSetup = 0
 ###############################################################################################################################
@@ -228,7 +228,7 @@ function Add-Registry-Record() {
 
     # Write to the 32 bits registry
     Write-Host "$(Get-Date) Writing 32 bits register"
-    Write-Host $(if ($null -ne (New-Item -Path HKLM:\SOFTWARE\IT\INVENTORY -Name $applicationCode -ErrorAction SilentlyContinue)) { "Registry key created successfully" } else { "Failed to create the registry key" })
+    Write-Host $(if ($null -ne (New-Item -Path HKLM:\SOFTWARE\IT\INVENTORY -Name $applicationCode -ErrorAction SilentlyContinue)) { "$(Get-Date) Registry key created successfully" } else { "$(Get-Date) Failed to create the registry key" })
 
     # Write properties
     $result = & { $test = New-ItemProperty -path HKLM:\SOFTWARE\IT\INVENTORY\$applicationCode -propertyType String -Name InstallDate -value $date -ErrorAction SilentlyContinue; if ($null -ne $test) { 0 } else { 1 } }
@@ -296,30 +296,8 @@ function Get-Details() {
     # Checks if the folder has an .exe or .msi file
     if ($appPath) {
         if ($appPath.Extension -eq ".msi") {
-            $windowsInstaller = New-Object -com WindowsInstaller.Installer
-            $database = $windowsInstaller.GetType().InvokeMember(
-                "OpenDatabase", "InvokeMethod", $Null,
-                $windowsInstaller, @($appPath.FullName, 0)
-            )
-    
-            $q = "SELECT Value FROM Property WHERE Property = 'ProductVersion'"
-            $View = $database.GetType().InvokeMember(
-                "OpenView", "InvokeMethod", $Null, $database, ($q)
-            )
-            
-            # Get the details from the MSI
-            $handle = $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
-            $record = ($View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null ))
-            # Get the version
-            $version = $record.GetType().InvokeMember( "StringData", "GetProperty", $Null, $record, 1 )
-            
-            # Close the objects and records
-            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($database)
-            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($View)
-            $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($windowsInstaller)
-
-            #TODO: HACKY BIT
-            $handle = $handle
+            # Get the version from the MSI
+            $version = Get-MSIData -pathMSI $appPath.FullName -property "ProductVersion"
 
             return $appPath.Name, $version
         }
@@ -365,28 +343,36 @@ function Install-Package() {
     $extension = $name.Substring($name.LastIndexOf('.')).ToLower()
     # Gets the absolute path of the installer
     if ($extension -ne "") {
-        $absolutePath = Resolve-Path -Path $installPath
-        $absolutePath = Join-Path -Path $absolutePath -ChildPath $name
+        # Get the absolute path
+        $absolutePath = Resolve-Path -Path ".\"
+        Write-Host "$(Get-Date) Absolute path to the sources folder: $absolutePath"
+
+        # Get the contents of the path
+        $localPathContents = Get-ChildItem $absolutePath
+
+        # Checks path contents and checks if the folder has an .exe or .msi file
+        $appPath = $localPathContents | Where-Object { $_.Extension -eq ".exe" -or $_.Extension -eq ".msi" } | Select-Object -First 1
     }
 
     # Executable process
     if ($extension -eq ".exe") {
         # Logging install arguments
         $installArgs = "$installArgs"
-        Write-Host "$(Get-Date) Processing $absolutePath EXE using $installArgs"
+        Write-Host "$(Get-Date) Processing $($appPath.FullName) EXE using $installArgs"
         $process = Start-Process -FilePath $absolutePath -ArgumentList $installArgs -PassThru -Wait
     }
 
     if ($extension -eq ".msi" -and $uninstall -eq 0) {
         # Logging install arguments
-        $installArgs = "/i $absolutePath $installArgs /L*V $logPath\$name-msi.log"
-        Write-Host "$(Get-Date) Processing MSI $absolutePath using $installArgs"
+        $installArgs = "/i $($appPath.FullName) $installArgs /L*V $logPath\$name-msi.log"
+        Write-Host "$(Get-Date) Processing MSI $($appPath.FullName) using $installArgs"
         $process = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
     }
 
     if ($extension -eq ".msi" -and $uninstall -eq 1) {
-        $installArgs = "/x$installArgs /QN /L*V $logPath\$name-msi.log"
-        Write-Host "$(Get-Date) Uninstalling MSI $absolutePath using $installArgs"
+        $guid = Get-MSIData -pathMSI $appPath.FullName -property "ProductCode"
+        $installArgs = "/x$guid $installArgs /QN /L*V $logPath\$name-msi.log"
+        Write-Host "$(Get-Date) Uninstalling MSI $($appPath.FullName) using $installArgs"
         $process = Start-Process "msiexec.exe" -ArgumentList $installArgs -Wait -NoNewWindow -PassThru
     }
 
@@ -394,7 +380,38 @@ function Install-Package() {
 }
 
 function Get-MSIData() {
+    param (
+        $pathMSI,
+        [string]$property
+    )
 
+    $windowsInstaller = New-Object -com WindowsInstaller.Installer
+    $database = $windowsInstaller.GetType().InvokeMember(
+        "OpenDatabase", "InvokeMethod", $Null,
+        $windowsInstaller, @($pathMSI, 0)
+    )
+
+    $q = "SELECT Value FROM Property WHERE Property = '$property'"
+
+    $View = $database.GetType().InvokeMember(
+        "OpenView", "InvokeMethod", $Null, $database, ($q)
+    )
+    
+    # Get the details from the MSI
+    $handle = $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
+    $record = ($View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null ))
+    # Get the version
+    $value = $record.GetType().InvokeMember( "StringData", "GetProperty", $Null, $record, 1 )
+    
+    # Close the objects and records
+    $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($database)
+    $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($View)
+    $handle = [System.Runtime.InteropServices.Marshal]::ReleaseComObject($windowsInstaller)
+
+    #TODO: HACKY BIT
+    $handle = $handle
+
+    return $value
 }
 
 function Exit-Gracefully() {
