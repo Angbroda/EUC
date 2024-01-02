@@ -1,7 +1,7 @@
 # This Powershell script launches the install application (for SCCM applications)
 # Created by EUC Seresco Team on July 2019. Last Update: November 2023
 # Author: Olaya Conde Diaz, Carlos Joaquin Roza Lopez, Oscar Lopez Fernandez, Borja Gonzalez Pardo
-# Version: 0.96
+# Version: 0.97
 param (
     [string]$appArgs = ""
 )
@@ -97,7 +97,6 @@ function Uninstall-Personalized() {
     Write-Host "$(Get-Date) No personalized setup found. Skipping"
     return 0
 }
-
 function Invoke-ActiveSetup() {
     # This function creates the active setup record for the application
     # It does not return anything
@@ -149,7 +148,6 @@ function Invoke-ActiveSetup() {
         Write-Host "$(Get-Date) No active setup component. Skipping..."
     }
 }
-
 function Test-Space {
     # This function checks if there is enough space in the disk to install the application
     # It does not return anything
@@ -214,7 +212,6 @@ function Remove-Inventory {
     }
 
 }
-
 function Add-Registry-Record() {
     # This function adds the registry record for the application acording to the application code (SXXXXMVV) and version
     # It doesnt return anything
@@ -246,7 +243,6 @@ function Add-Registry-Record() {
     $result += & { $test = New-ItemProperty -path HKLM:\SOFTWARE\WOW6432Node\IT\INVENTORY\$applicationCode -propertyType String -Name ProductVersion -value $applicationVersion -ErrorAction SilentlyContinue; if ($null -ne $test) { 0 } else { 1 } }
     Write-Host $(if ($result -eq 0) { "$(Get-Date) Registry properties applied" } else { "$(Get-Date) Error applying properties" })
 }
-
 function Initialize-Vars() {
     # This function initializes the variables for the script
     # It returns the application code from the file name and the install path
@@ -260,7 +256,6 @@ function Initialize-Vars() {
     # Returns the application code and the install path
     return $applicationCode, $installPath
 }
-
 function Remove-RegistryRecord() {
     param (
         [string]$applicationCode
@@ -310,7 +305,6 @@ function Get-Details() {
     # If the folder does not have an .exe or .msi file, it returns an empty string
     return "", ""
 }
-
 function Initialize-Loggin {
     # This function creates the folder structure for the logs
     # Returns the path to the folder in the format of C:\IT\Logs\{PACKAGE}
@@ -378,7 +372,6 @@ function Install-Package() {
 
     return $process.ExitCode
 }
-
 function Get-MSIData() {
     param (
         $pathMSI,
@@ -413,7 +406,6 @@ function Get-MSIData() {
 
     return $value
 }
-
 function Exit-Gracefully() {
     param (
         $optionalParameters
