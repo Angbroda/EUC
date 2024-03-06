@@ -1,6 +1,6 @@
 # This Powershell script launches the install application (for SCCM applications)
 # Created by EUC Seresco Team on July 2019. Last Update: November 2023
-# Author: Olaya Conde Diaz, Carlos Joaquin Roza Lopez, Oscar Lopez Fernandez, Borja Gonzalez Pardo
+# Author: Olaya Conde Diaz, Carlos Joaquin Roza Lopez, Oscar Lopez Fernandez, Borja Gonzalez Pardo, Daniel Martin Juaréz
 # Version: 0.97
 param (
     [string]$appArgs = ""
@@ -23,8 +23,8 @@ function MainLoop() {
     # Starts the logging
     Start-Transcript -Path ($logPath + "\" + $applicationCode + ".log") -Append
 
-    # Gets the name of the installer, extension and version based on the LOCAL install path (MSI or EXE)
-    $applicationToRun, $applicationVersion = Get-Details -localPath $installPath
+    # Gets the name of the installer, name and version based on the LOCAL install path (MSI or EXE)
+    $applicationToRun, $applicationVersion, $internalName = Get-Details -localPath $installPath
 
     # Check available space, default 1GB
     Test-Space -spaceRequired 1
@@ -63,7 +63,7 @@ function Uninstall {
     Start-Transcript -Path ($logPath + "\" + $applicationCode + ".log") -Append
 
     # Gets the name of the installer, extension and version based on the LOCAL install path (MSI or EXE)
-    $applicationToRun, $applicationVersion = Get-Details -localPath $installPath
+    $applicationToRun, $applicationVersion, $internalName = Get-Details -localPath $installPath
 	
     # Start standard uninstall
     $code = Install-Package -installPath $installPath -name $applicationToRun -installArgs $uninstallArgs -uninstall 1 -logPath $logPath
@@ -293,8 +293,8 @@ function Get-Details() {
         if ($appPath.Extension -eq ".msi") {
             # Get the version from the MSI
             $version = Get-MSIData -pathMSI $appPath.FullName -property "ProductVersion"
-
-            return $appPath.Name, $version
+            $msiInternalName = Get-MSIData -pathMSI $appPath.FullName -property "ProductName"
+            return $appPath.Name, $version, $msiInternalName
         }
 
         # Get the version from the EXE
